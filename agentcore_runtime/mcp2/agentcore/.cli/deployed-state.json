@@ -1,0 +1,17 @@
+{
+  "targets": {
+    "default": {
+      "resources": {
+        "runtimes": {
+          "Weather": {
+            "runtimeId": "mcp2_Weather-a7ZoanFkS0",
+            "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:822206589627:runtime/mcp2_Weather-a7ZoanFkS0",
+            "roleArn": "arn:aws:iam::822206589627:role/AgentCore-mcp2-default-ApplicationAgentWeatherRunti-Je2zVxceqqMJ"
+          }
+        },
+        "stackName": "AgentCore-mcp2-default",
+        "deployHash": "6cb06631c8dbb81a"
+      }
+    }
+  }
+}
