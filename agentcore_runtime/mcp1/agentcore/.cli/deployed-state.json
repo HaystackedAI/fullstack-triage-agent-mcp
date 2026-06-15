@@ -1,0 +1,17 @@
+{
+  "targets": {
+    "default": {
+      "resources": {
+        "runtimes": {
+          "Cal": {
+            "runtimeId": "mcp1_Cal-3WVTZZ55XO",
+            "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:822206589627:runtime/mcp1_Cal-3WVTZZ55XO",
+            "roleArn": "arn:aws:iam::822206589627:role/AgentCore-mcp1-default-ApplicationAgentCalRuntimeEx-5Db12HO100nT"
+          }
+        },
+        "stackName": "AgentCore-mcp1-default",
+        "deployHash": "08d810890a254977"
+      }
+    }
+  }
+}
