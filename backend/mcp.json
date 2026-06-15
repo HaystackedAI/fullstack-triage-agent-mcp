@@ -1,18 +1,39 @@
 {
-    "mcpServers": {
-        "weather": {
-            "command": "python",
-            "args": [
-                "mcp_servers/weather/weather_server.py"
-            ],
-            "enabled": true
-        },
-        "calendar": {
-            "command": "python",
-            "args": [
-                "mcp_servers/calendar/calendar_server.py"
-            ],
-            "enabled": true
-        }
-    }
-}
+      "mcpServers": {
+          "calculator": {
+              "command": "python",
+              "args": [
+                  "mcp_servers/calculator_server.py"
+              ],
+              "enabled": true
+          },
+          "task_manager": {
+              "command": "python",
+              "args": [
+                  "mcp_servers/task_manager_server.py"
+              ],
+              "enabled": true
+          },
+          "weather": {
+              "command": "python",
+              "args": [
+                  "mcp_servers/weather/weather_server.py"
+              ],
+              "enabled": true
+          },
+          "calendar": {
+              "command": "python",
+              "args": [
+                  "mcp_servers/calendar/calendar_server.py"
+              ],
+              "enabled": true
+          },
+          "email_history": {
+              "command": "python",
+              "args": [
+                  "mcp_servers/email_history/email_history_server.py"
+              ],
+              "enabled": true
+          }
+      }
+  }

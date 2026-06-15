@@ -26,5 +26,5 @@ def divide(x: float, y: float) -> float:
     return x / y
 
 if __name__ == "__main__":
-    print("🔢 Starting Calculator MCP Server...")
+    # print("🔢 Starting Calculator MCP Server...")  # Commented: print interferes with stdio
     mcp.run(transport="stdio") 

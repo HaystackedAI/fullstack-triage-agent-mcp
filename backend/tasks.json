@@ -1,0 +1,8 @@
+[
+  {
+    "id": 1,
+    "description": "Buy groceries",
+    "priority": "medium",
+    "completed": false
+  }
+]
