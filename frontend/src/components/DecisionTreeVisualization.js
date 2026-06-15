@@ -10,9 +10,26 @@ const DecisionTreeVisualization = ({ tree, currentNodeId }) => {
 
   useEffect(() => {
     if (tree && tree.nodes) {
-      const convertToD3Format = (nodeId, nodes) => {
+      const convertToD3Format = (nodeId, nodes, visited = new Set()) => {
         const node = nodes[nodeId];
         if (!node) return null;
+
+        // Prevent circular references
+        if (visited.has(nodeId)) {
+          return {
+            name: `${node.topic || nodeId} (cycle detected)`,
+            attributes: {
+              id: nodeId,
+              isCurrentNode: nodeId === currentNodeId,
+              isTerminal: true,
+              hasChildren: false,
+              isCycle: true
+            },
+            children: []
+          };
+        }
+
+        visited.add(nodeId);
 
         const isCurrentNode = nodeId === currentNodeId;
         const hasChildren = node.children && node.children.length > 0;
@@ -25,8 +42,8 @@ const DecisionTreeVisualization = ({ tree, currentNodeId }) => {
             isTerminal: node.is_terminal,
             hasChildren
           },
-          children: hasChildren ? 
-            node.children.map(childId => convertToD3Format(childId, nodes)).filter(Boolean) : 
+          children: hasChildren ?
+            node.children.map(childId => convertToD3Format(childId, nodes, new Set(visited))).filter(Boolean) :
             []
         };
       };

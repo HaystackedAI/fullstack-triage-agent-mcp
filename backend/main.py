@@ -1,20 +1,6 @@
 """
 AI Triage Agent - Backend
 Real Strands Agent integration with MCP servers
-
-⚠️ IMPORTANT DISCLAIMER:
-This is a Proof of Concept (PoC) demonstration only. This application is designed for 
-educational and demonstration purposes to showcase AI integration capabilities and productivity 
-tool orchestration. It is not intended to provide medical advice, professional consultation, 
-or replace qualified professional judgment in any domain.
-
-The AI responses and any data generated are produced by artificial intelligence models and 
-should be treated as mock/demo content only. Use this application at your own risk. The 
-developers and contributors are not responsible for any decisions made based on the output 
-from this system.
-
-For any medical, legal, financial, or other professional advice, please consult with 
-qualified professionals in the respective fields.
 """
 
 import os
@@ -226,17 +212,27 @@ def get_or_create_session_agent(session_id: str, model_id: str) -> Agent:
         tools = get_cached_tools()
         
         # General purpose prompt. Specific instructions will be provided in each call.
-        system_prompt = """You are a helpful and empathetic AI Triage Assistant.
-Your goal is to guide users through a structured assessment.
+        system_prompt = """You are a helpful and knowledgeable AI Financial Strategy Assistant specializing in dividend investing.
+Your goal is to guide users through building a personalized dividend investment strategy with tax-advantaged accounts.
 You must follow the specific instructions given in each prompt precisely.
 Always provide your response in a clear, conversational, and professional manner.
 The user-facing response must NOT include any system commands or XML tags unless specifically requested.
 
+TOOL USAGE:
+You have access to calculator, task manager, calendar, weather, and email tools.
+When users ask questions that can be answered with these tools, USE THEM:
+- Math questions (dividend yield, compound growth, tax savings) → use calculator tools
+- Action items and reminders → use task_manager tools
+- Scheduling (dividend payment dates, account opening) → use calendar tools
+- Weather inquiries → use weather tools
+- Email queries → use email_history tools
+
 FORMATTING GUIDELINES:
-- Use **bold text** for important questions, warnings, or key medical information
-- Use clear, conversational language that patients can easily understand
-- Highlight urgent situations with appropriate emphasis
-- Make important medical advice stand out visually
+- Use **bold text** for important financial concepts, warnings, or key recommendations
+- Use clear, conversational language that investors can easily understand
+- Highlight important strategy points and action items with appropriate emphasis
+- Make financial calculations and recommendations stand out visually
+- Always include disclaimers that this is educational content, not financial advice
 """
         
         agent = Agent(model=model, system_prompt=system_prompt, tools=tools)
@@ -1137,7 +1133,7 @@ async def chat_endpoint(chat_message: ChatMessage, request: Request):
 async def get_decision_tree():
     """Get the decision tree structure for visualization"""
     try:
-        tree_file = os.path.join(os.path.dirname(__file__), 'data/comprehensive_decision_tree.json')
+        tree_file = os.path.join(os.path.dirname(__file__), 'data/dividend_strategy_tree.json')
         decision_tree = DecisionTree(tree_file)
         
         # Convert decision tree to JSON-serializable format
@@ -1286,7 +1282,7 @@ async def startup_event():
     
     # Initialize decision tree
     try:
-        tree_file = os.path.join(os.path.dirname(__file__), 'data/comprehensive_decision_tree.json')
+        tree_file = os.path.join(os.path.dirname(__file__), 'data/dividend_strategy_tree.json')
         decision_tree = DecisionTree(tree_file)
         add_server_log("system", f"Decision Tree initialized: {len(decision_tree.nodes)} nodes loaded", level="info")
     except Exception as e:
