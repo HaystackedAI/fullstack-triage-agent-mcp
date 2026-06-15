@@ -1,10 +1,9 @@
 {
       "mcpServers": {
           "calculator": {
-              "command": "python",
-              "args": [
-                  "mcp_servers/calculator_server.py"
-              ],
+              "transport": "agentcore",
+              "runtime_arn": "arn:aws:bedrock-agentcore:us-east-1:822206589627:runtime/mcp1_Cal-3WVTZZ55XO",
+              "region": "us-east-1",
               "enabled": true
           },
           "task_manager": {

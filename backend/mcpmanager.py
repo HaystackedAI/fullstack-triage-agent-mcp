@@ -70,6 +70,12 @@ class MCPClientManager:
 
             for server_name, server_config in servers_config.items():
                 try:
+                    # Skip AgentCore-configured servers (handled separately in main.py)
+                    transport = server_config.get("transport", "stdio")
+                    if transport == "agentcore":
+                        logger.info(f"Skipping {server_name} - using AgentCore transport (handled separately)")
+                        continue
+
                     # Create MCP client using stdio transport (Strands official way)
                     command = server_config.get("command", "python3")
                     args = server_config.get("args", [])

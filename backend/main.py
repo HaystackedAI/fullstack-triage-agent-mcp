@@ -379,49 +379,72 @@ def estimate_tokens(text: str) -> int:
     return max(1, len(text) // 4)
 
 def setup_mcp_servers():
-    """Setup MCP servers using stdio transport"""
+    """Setup MCP servers using stdio or AgentCore transport"""
     global mcp_clients
-    
+
     for server_name, server_config in mcp_servers.items():
         if not server_config.get("enabled", True):
             add_server_log(server_name, "Server disabled, skipping")
             continue
-            
+
         try:
-            # Prepare command - find available python commandㅂ
-            def find_python_command():
-                import shutil
-                if shutil.which("python"):
-                    return "python"
-                elif shutil.which("python3"):
-                    return "python3"
-                else:
-                    return "python"  # fallback
-            
-            default_python = find_python_command()
-            command = server_config.get("command", default_python)
-            args = server_config.get("args", [])
-            
-            # Build full command
-            full_command = [command] + args
-            
-            add_server_log(server_name, f"Setting up MCP server: {' '.join(full_command)}")
-            
-            # Create MCP Client for stdio transport (similar to the example)
-            mcp_client = MCPClient(
-                lambda: stdio_client(
-                    StdioServerParameters(
-                        command=command,
-                        args=args,
-                        cwd=os.path.dirname(__file__)
+            transport = server_config.get("transport", "stdio")
+
+            if transport == "agentcore":
+                # AgentCore Runtime transport
+                runtime_arn = server_config.get("runtime_arn")
+                region = server_config.get("region", "us-east-1")
+
+                if not runtime_arn:
+                    raise ValueError(f"runtime_arn required for agentcore transport")
+
+                add_server_log(server_name, f"Setting up AgentCore MCP server: {runtime_arn}")
+
+                # Create AgentCore MCP client wrapper
+                from agentcore_mcp_client import AgentCoreMCPClient
+                mcp_client = AgentCoreMCPClient(
+                    runtime_arn=runtime_arn,
+                    region=region,
+                    server_name=server_name
+                )
+
+                mcp_clients[server_name] = mcp_client
+                mcp_servers[server_name]["status"] = "ready"
+                add_server_log(server_name, f"AgentCore MCP server ready: {runtime_arn}")
+
+            else:
+                # Stdio transport (local MCP server)
+                def find_python_command():
+                    import shutil
+                    if shutil.which("python"):
+                        return "python"
+                    elif shutil.which("python3"):
+                        return "python3"
+                    else:
+                        return "python"
+
+                default_python = find_python_command()
+                command = server_config.get("command", default_python)
+                args = server_config.get("args", [])
+
+                full_command = [command] + args
+                add_server_log(server_name, f"Setting up local MCP server: {' '.join(full_command)}")
+
+                # Create MCP Client for stdio transport
+                mcp_client = MCPClient(
+                    lambda cmd=command, arg=args: stdio_client(
+                        StdioServerParameters(
+                            command=cmd,
+                            args=arg,
+                            cwd=os.path.dirname(__file__)
+                        )
                     )
                 )
-            )
-            
-            mcp_clients[server_name] = mcp_client
-            mcp_servers[server_name]["status"] = "ready"
-            add_server_log(server_name, "MCP server ready")
-                
+
+                mcp_clients[server_name] = mcp_client
+                mcp_servers[server_name]["status"] = "ready"
+                add_server_log(server_name, "Local MCP server ready")
+
         except Exception as e:
             add_server_log(server_name, f"Setup error: {str(e)}")
             mcp_servers[server_name]["status"] = "error"
