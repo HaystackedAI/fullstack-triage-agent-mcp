@@ -468,16 +468,16 @@ def get_all_mcp_tools():
 
 # Available models with new Claude versions
 AVAILABLE_MODELS = [
-    {
-        "id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
-        "name": "Claude Sonnet 4",
-        "description": "Most advanced Claude model with superior reasoning"
-    },
-    {
-        "id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-        "name": "Claude 3.7 Sonnet",
-        "description": "Claude model with enhanced reasoning capabilities"
-    },
+    # {
+    #     "id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+    #     "name": "Claude Sonnet 4",
+    #     "description": "Most advanced Claude model with superior reasoning"
+    # },
+    # {
+    #     "id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+    #     "name": "Claude 3.7 Sonnet",
+    #     "description": "Claude model with enhanced reasoning capabilities"
+    # },
     {
         "id": "us.amazon.nova-pro-v1:0",
         "name": "Amazon Nova Pro",
