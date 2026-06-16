@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import calendar as cal
 
 # Simple calendar storage (in production, integrate with Google Calendar API)
-CALENDAR_FILE = "calendar_events.json"
+CALENDAR_FILE = "./data/calendar_events.json"
 
 def load_events() -> List[Dict]:
     """Load calendar events from file or return empty list."""
