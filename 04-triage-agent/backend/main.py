@@ -141,7 +141,7 @@ class DecisionTree:
     def load_data(self):
         """Load decision tree data from JSON file"""
         try:
-            with open(self.data_file, 'r') as f:
+            with open(self.data_file, 'r', encoding='utf-8') as f:            
                 data = json.load(f)
             
             for node_id, node_data in data['nodes'].items():
