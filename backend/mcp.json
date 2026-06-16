@@ -13,10 +13,9 @@
             "enabled": true
         },
         "task_manager": {
-            "command": "python",
-            "args": [
-                "mcp_servers/task_manager_server.py"
-            ],
+            "transport": "agentcore",
+            "runtime_arn": "arn:aws:bedrock-agentcore:us-east-1:822206589627:runtime/mcp3_TaskManager-IWLz3j9gBj",
+            "region": "us-east-1",
             "enabled": true
         },
         "calendar": {

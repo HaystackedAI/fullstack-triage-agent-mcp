@@ -1,0 +1,17 @@
+{
+  "targets": {
+    "default": {
+      "resources": {
+        "runtimes": {
+          "Task": {
+            "runtimeId": "mcp4_Task-nmaGy55hAz",
+            "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:822206589627:runtime/mcp4_Task-nmaGy55hAz",
+            "roleArn": "arn:aws:iam::822206589627:role/AgentCore-mcp4-default-ApplicationAgentTaskRuntimeE-VWzCkzFLUdvf"
+          }
+        },
+        "stackName": "AgentCore-mcp4-default",
+        "deployHash": "181aef9e7524ba6d"
+      }
+    }
+  }
+}

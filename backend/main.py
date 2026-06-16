@@ -483,14 +483,14 @@ AVAILABLE_MODELS = [
     #     "description": "Claude model with enhanced reasoning capabilities"
     # },
     {
-        "id": "us.amazon.nova-pro-v1:0",
-        "name": "Amazon Nova Pro",
-        "description": "High-performance multimodal model"
-    },
-    {
         "id": "us.amazon.nova-lite-v1:0",
         "name": "Amazon Nova Lite",
         "description": "Balanced performance and cost-effectiveness"
+    },
+    {
+        "id": "us.amazon.nova-pro-v1:0",
+        "name": "Amazon Nova Pro",
+        "description": "High-performance multimodal model"
     }
 ]
 
@@ -1321,6 +1321,71 @@ async def shutdown_event():
     """Cleanup MCP servers on shutdown"""
     add_server_log("system", "Shutting down MCP servers...")
     # Clean shutdown for stdio-based servers happens automatically
+    from database import close_db_pool
+    await close_db_pool()
+
+# ============================================================================
+# Task Management CRUD API (PostgreSQL via Aiven)
+# ============================================================================
+
+class TaskCreate(BaseModel):
+    description: str
+    priority: str = "medium"
+
+class TaskUpdate(BaseModel):
+    completed: bool
+
+@app.get("/api/tasks")
+async def get_tasks():
+    """Get all tasks"""
+    from database import get_all_tasks
+    try:
+        tasks = await get_all_tasks()
+        return {"tasks": tasks}
+    except Exception as e:
+        logger.error(f"Error getting tasks: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/tasks")
+async def create_task_endpoint(task: TaskCreate):
+    """Create a new task"""
+    from database import create_task
+    try:
+        new_task = await create_task(task.description, task.priority)
+        return {"task": new_task}
+    except Exception as e:
+        logger.error(f"Error creating task: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.patch("/api/tasks/{task_id}")
+async def update_task_endpoint(task_id: int, task: TaskUpdate):
+    """Update task completion status"""
+    from database import update_task_status
+    try:
+        updated_task = await update_task_status(task_id, task.completed)
+        if not updated_task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return {"task": updated_task}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating task: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/tasks/{task_id}")
+async def delete_task_endpoint(task_id: int):
+    """Delete a task"""
+    from database import delete_task
+    try:
+        deleted_task = await delete_task(task_id)
+        if not deleted_task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return {"task": deleted_task}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting task: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

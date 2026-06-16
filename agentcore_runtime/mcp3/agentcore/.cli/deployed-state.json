@@ -1,0 +1,17 @@
+{
+  "targets": {
+    "default": {
+      "resources": {
+        "runtimes": {
+          "TaskManager": {
+            "runtimeId": "mcp3_TaskManager-IWLz3j9gBj",
+            "runtimeArn": "arn:aws:bedrock-agentcore:us-east-1:822206589627:runtime/mcp3_TaskManager-IWLz3j9gBj",
+            "roleArn": "arn:aws:iam::822206589627:role/AgentCore-mcp3-default-ApplicationAgentTaskManagerR-Ozm99b0kiCW1"
+          }
+        },
+        "stackName": "AgentCore-mcp3-default",
+        "deployHash": "2a89cbeaac28ea57"
+      }
+    }
+  }
+}
