@@ -34,11 +34,10 @@ class AgentCoreMCPClient:
 
         try:
             # Call AgentCore runtime to list tools
-            response = self.client.invoke_runtime(
-                runtimeArn=self.runtime_arn,
-                request={
-                    "method": "tools/list"
-                }
+            response = self.client.invoke_agent_runtime(
+                runtimeId=self.runtime_arn,
+                sessionId="tool-list-session",
+                inputText="list-tools"
             )
 
             # Parse response
@@ -64,15 +63,10 @@ class AgentCoreMCPClient:
         """
         try:
             # Call AgentCore runtime to execute tool
-            response = self.client.invoke_runtime(
-                runtimeArn=self.runtime_arn,
-                request={
-                    "method": "tools/call",
-                    "params": {
-                        "name": tool_name,
-                        "arguments": arguments
-                    }
-                }
+            response = self.client.invoke_agent_runtime(
+                runtimeId=self.runtime_arn,
+                sessionId="tool-call-session",
+                inputText=f"call-tool --tool {tool_name} --input '{json.dumps(arguments)}'"
             )
 
             # Parse response

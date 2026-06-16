@@ -14,7 +14,7 @@
         },
         "task_manager": {
             "transport": "agentcore",
-            "runtime_arn": "arn:aws:bedrock-agentcore:us-east-1:822206589627:runtime/mcp3_TaskManager-IWLz3j9gBj",
+            "runtime_arn": "arn:aws:bedrock-agentcore:us-east-1:822206589627:runtime/mcp4_Task-nmaGy55hAz",
             "region": "us-east-1",
             "enabled": true
         },

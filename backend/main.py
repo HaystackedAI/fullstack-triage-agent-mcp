@@ -176,14 +176,38 @@ class DecisionTree:
 # --- End of Inlined Decision Tree Logic ---
 
 def refresh_tools_cache():
-    """Refresh the global tools cache"""
-    global cached_tools, tools_last_updated
-    
+    """Refresh the global tools cache - includes BOTH stdio and AgentCore tools"""
+    global cached_tools, tools_last_updated, mcp_clients
+
+    logger.info("=== REFRESH_TOOLS_CACHE CALLED ===")
+    logger.info(f"mcp_clients available: {list(mcp_clients.keys())}")
+
     try:
-        cached_tools = mcp_manager.get_all_tools(active_only=True)
+        # Get stdio tools from mcp_manager
+        stdio_tools = mcp_manager.get_all_tools(active_only=True)
+        logger.info(f"Got {len(stdio_tools)} stdio tools from mcp_manager")
+
+        # Get AgentCore tools from mcp_clients
+        agentcore_tools = []
+        for server_name, mcp_client in mcp_clients.items():
+            logger.info(f"Fetching tools from AgentCore server: {server_name}")
+            try:
+                tools = mcp_client.list_tools_sync()
+                logger.info(f"Got {len(tools) if tools else 0} tools from {server_name}")
+                if tools:
+                    agentcore_tools.extend(tools)
+                    add_server_log(server_name, f"Loaded {len(tools)} tools from AgentCore", level="info")
+            except Exception as e:
+                logger.error(f"Error loading tools from {server_name}: {str(e)}")
+                add_server_log(server_name, f"Error loading AgentCore tools: {str(e)}", level="error")
+
+        # Combine both
+        cached_tools = stdio_tools + agentcore_tools
         tools_last_updated = datetime.now()
-        add_server_log("system", f"Tools cache refreshed: {len(cached_tools)} tools loaded", level="info", details={"tool_count": len(cached_tools)})
+        logger.info(f"✅ TOOLS CACHE REFRESHED: {len(stdio_tools)} stdio + {len(agentcore_tools)} AgentCore = {len(cached_tools)} total")
+        add_server_log("system", f"Tools cache refreshed: {len(stdio_tools)} stdio + {len(agentcore_tools)} AgentCore = {len(cached_tools)} total", level="info", details={"stdio": len(stdio_tools), "agentcore": len(agentcore_tools), "total": len(cached_tools)})
     except Exception as e:
+        logger.error(f"Error in refresh_tools_cache: {str(e)}")
         add_server_log("system", f"Error refreshing tools cache: {str(e)}", level="error", details={"error": str(e)})
         cached_tools = []
 
@@ -218,14 +242,21 @@ You must follow the specific instructions given in each prompt precisely.
 Always provide your response in a clear, conversational, and professional manner.
 The user-facing response must NOT include any system commands or XML tags unless specifically requested.
 
-TOOL USAGE:
+TOOL USAGE - HIGHEST PRIORITY:
 You have access to calculator, task manager, calendar, weather, and email tools.
-When users ask questions that can be answered with these tools, USE THEM:
-- Math questions (dividend yield, compound growth, tax savings) → use calculator tools
-- Action items and reminders → use task_manager tools
-- Scheduling (dividend payment dates, account opening) → use calendar tools
+When users ask questions that can be answered with these tools, USE THE TOOL FIRST before continuing with strategy discussion:
+- ANY math or calculations (3+5, percentages, yields, compound growth) → use calculator tools
+- Task/todo list operations (list tasks, add task, complete task, delete task) → use task_manager tools
+- Calendar/event operations (upcoming events, schedule meeting, check calendar) → use calendar tools
 - Weather inquiries (US locations only with lat/long) → use weather tools
 - Email queries → use email_history tools
+
+CRITICAL DISTINCTION - DO NOT CONFUSE THESE:
+- "list tasks" or "tasks" → ALWAYS use task_manager tool (your TODO list)
+- "upcoming events" or "calendar" → use calendar tool (scheduled meetings/events)
+- task_manager is for TODO items, calendar is for scheduled events with dates/times
+
+IMPORTANT: Tool requests take precedence. Answer the tool request, then continue with dividend strategy if relevant.
 
 IMPORTANT: When using weather tools, the user MUST provide latitude and longitude coordinates.
 The weather service only works for US locations. If they ask for international weather (Toronto, London, etc.),
@@ -386,23 +417,33 @@ def setup_mcp_servers():
     """Setup MCP servers using stdio or AgentCore transport"""
     global mcp_clients
 
+    logger.info(f"=== SETUP_MCP_SERVERS START: Found {len(mcp_servers)} servers in config ===")
+    add_server_log("system", f"Starting setup for {len(mcp_servers)} MCP servers", level="info")
+
     for server_name, server_config in mcp_servers.items():
+        logger.info(f"Processing server: {server_name}, config: {server_config}")
+
         if not server_config.get("enabled", True):
+            logger.info(f"Server {server_name} is DISABLED, skipping")
             add_server_log(server_name, "Server disabled, skipping")
             continue
 
         try:
             transport = server_config.get("transport", "stdio")
+            logger.info(f"Server {server_name} transport: {transport}")
 
             if transport == "agentcore":
                 # AgentCore Runtime transport
                 runtime_arn = server_config.get("runtime_arn")
                 region = server_config.get("region", "us-east-1")
 
+                logger.info(f"AgentCore server {server_name}: runtime_arn={runtime_arn}, region={region}")
+
                 if not runtime_arn:
                     raise ValueError(f"runtime_arn required for agentcore transport")
 
                 add_server_log(server_name, f"Setting up AgentCore MCP server: {runtime_arn}")
+                logger.info(f"Creating AgentCoreMCPClient for {server_name}")
 
                 # Create AgentCore MCP client wrapper
                 from agentcore_mcp_client import AgentCoreMCPClient
@@ -414,6 +455,7 @@ def setup_mcp_servers():
 
                 mcp_clients[server_name] = mcp_client
                 mcp_servers[server_name]["status"] = "ready"
+                logger.info(f"✅ AgentCore server {server_name} ready and added to mcp_clients")
                 add_server_log(server_name, f"AgentCore MCP server ready: {runtime_arn}")
 
             else:
@@ -582,12 +624,15 @@ load_mcp_config()
 
 def initialize_mcp_servers():
     """Initialize all MCP servers"""
+    logger.info("=== INITIALIZE_MCP_SERVERS CALLED ===")
     add_server_log("system", "Initializing MCP servers...")
-    
+
     # Setup MCP servers
     setup_mcp_servers()
-    
-    add_server_log("system", "MCP initialization complete")
+
+    logger.info(f"=== SETUP COMPLETE: {len(mcp_clients)} clients in mcp_clients ===")
+    logger.info(f"mcp_clients keys: {list(mcp_clients.keys())}")
+    add_server_log("system", f"MCP initialization complete - {len(mcp_clients)} AgentCore clients loaded")
 
 # FastAPI app setup
 app = FastAPI(title="AI Triage Agent API")
