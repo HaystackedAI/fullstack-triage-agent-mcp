@@ -55,7 +55,7 @@ To get started with the AI Triage Agent, follow these simple steps:
 
 ```bash
 git clone https://github.com/strands-agents/samples.git
-cd samples/04-UX-demos/04-triage-agent
+cd samples/python/07-ux-demos/triage-agent
 ```
 
 #### 2. Configure AWS Credentials
@@ -246,11 +246,11 @@ The application implements a modern, scalable architecture:
 
 ## Contributing
 
-Please refer to [CONTRIBUTING.md](../../CONTRIBUTING.md) for detailed contribution guidelines, development practices, and code standards.
+Please refer to [CONTRIBUTING.md](../../../CONTRIBUTING.md) for detailed contribution guidelines, development practices, and code standards.
 
 ## License
 
-This project is licensed under the **MIT License** - see [LICENSE.md](../../LICENSE.md) for details.
+This project is licensed under the **MIT License** - see [LICENSE](../../../LICENSE) for details.
 
 <div align="center">
   <p><strong>Built with ❤️ using Strands Agents</strong></p>

@@ -81,5 +81,6 @@ def delete_task(task_id: int) -> str:
     return f"Task with ID {task_id} not found."
 
 if __name__ == "__main__":
-    # print("📋 Starting Task Manager MCP Server...")
-    mcp.run(transport="stdio") 
+    print("📋 Starting Task Manager MCP Server...")
+    print("Available at: http://localhost:8001/mcp/")
+    mcp.run(transport="streamable-http", port=8001) 

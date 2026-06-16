@@ -1,6 +1,20 @@
 """
 AI Triage Agent - Backend
 Real Strands Agent integration with MCP servers
+
+⚠️ IMPORTANT DISCLAIMER:
+This is a Proof of Concept (PoC) demonstration only. This application is designed for 
+educational and demonstration purposes to showcase AI integration capabilities and productivity 
+tool orchestration. It is not intended to provide medical advice, professional consultation, 
+or replace qualified professional judgment in any domain.
+
+The AI responses and any data generated are produced by artificial intelligence models and 
+should be treated as mock/demo content only. Use this application at your own risk. The 
+developers and contributors are not responsible for any decisions made based on the output 
+from this system.
+
+For any medical, legal, financial, or other professional advice, please consult with 
+qualified professionals in the respective fields.
 """
 
 import os
@@ -127,7 +141,7 @@ class DecisionTree:
     def load_data(self):
         """Load decision tree data from JSON file"""
         try:
-            with open(self.data_file, 'r', encoding='utf-8') as f:
+            with open(self.data_file, 'r', encoding='utf-8') as f:            
                 data = json.load(f)
             
             for node_id, node_data in data['nodes'].items():
@@ -176,36 +190,15 @@ class DecisionTree:
 # --- End of Inlined Decision Tree Logic ---
 
 def refresh_tools_cache():
-    """Refresh the global tools cache - includes BOTH stdio and AgentCore tools"""
-    global cached_tools, tools_last_updated, mcp_clients
-
+    """Refresh the global tools cache"""
+    global cached_tools, tools_last_updated
+    
     try:
-        # Get stdio tools from mcp_manager (don't load at startup - only when agent runs)
-        # stdio tools require context manager which isn't available at startup
-        stdio_tools = []
-        stdio_count = len(mcp_manager.get_active_clients())
-        logger.info(f"Stdio tools ({stdio_count} servers) will be loaded when agent starts")
-
-        # Get AgentCore tools from mcp_clients
-        agentcore_tools = []
-        for server_name, mcp_client in mcp_clients.items():
-            try:
-                tools = mcp_client.list_tools_sync()
-                if tools:
-                    agentcore_tools.extend(tools)
-                    add_server_log(server_name, f"Loaded {len(tools)} tools", level="info")
-            except Exception as e:
-                logger.error(f"Error loading tools from {server_name}: {str(e)}")
-                add_server_log(server_name, f"Tool load error: {str(e)}", level="error")
-
-        # Combine both (stdio tools loaded at runtime via mcp_manager context)
-        cached_tools = agentcore_tools  # Only cache AgentCore tools at startup
+        cached_tools = mcp_manager.get_all_tools(active_only=True)
         tools_last_updated = datetime.now()
-        logger.info(f"✅ Tools loaded: {stdio_count} stdio (runtime) + {len(agentcore_tools)} AgentCore = {stdio_count + len(agentcore_tools)} total")
-        add_server_log("system", f"Tools: {stdio_count} stdio + {len(agentcore_tools)} AgentCore = {stdio_count + len(agentcore_tools)} total", level="info")
+        add_server_log("system", f"Tools cache refreshed: {len(cached_tools)} tools loaded", level="info", details={"tool_count": len(cached_tools)})
     except Exception as e:
-        logger.error(f"Error refreshing tools cache: {str(e)}")
-        add_server_log("system", f"Tool cache error: {str(e)}", level="error")
+        add_server_log("system", f"Error refreshing tools cache: {str(e)}", level="error", details={"error": str(e)})
         cached_tools = []
 
 def get_cached_tools():
@@ -221,7 +214,8 @@ def get_cached_tools():
 mcp_manager.initialize_default_clients()
 add_server_log("system", f"MCP Manager initialized with clients: {mcp_manager.get_active_clients()}", level="info", details={"active_clients": mcp_manager.get_active_clients()})
 
-# NOTE: Tools cache will be loaded in startup_event() after AgentCore clients are set up
+# Pre-load tools cache
+refresh_tools_cache()
 
 def get_or_create_session_agent(session_id: str, model_id: str) -> Agent:
     """Get or create a cached agent for the given session and model"""
@@ -232,38 +226,17 @@ def get_or_create_session_agent(session_id: str, model_id: str) -> Agent:
         tools = get_cached_tools()
         
         # General purpose prompt. Specific instructions will be provided in each call.
-        system_prompt = """You are a helpful and knowledgeable AI Financial Strategy Assistant specializing in dividend investing.
-Your goal is to guide users through building a personalized dividend investment strategy with tax-advantaged accounts.
+        system_prompt = """You are a helpful and empathetic AI Triage Assistant.
+Your goal is to guide users through a structured assessment.
 You must follow the specific instructions given in each prompt precisely.
 Always provide your response in a clear, conversational, and professional manner.
 The user-facing response must NOT include any system commands or XML tags unless specifically requested.
 
-TOOL USAGE - HIGHEST PRIORITY:
-You have access to calculator, task manager, calendar, weather, and email tools.
-When users ask questions that can be answered with these tools, USE THE TOOL FIRST before continuing with strategy discussion:
-- ANY math or calculations (3+5, percentages, yields, compound growth) → use calculator tools
-- Task/todo list operations (list tasks, add task, complete task, delete task) → use task_manager tools
-- Calendar/event operations (upcoming events, schedule meeting, check calendar) → use calendar tools
-- Weather inquiries (US locations only with lat/long) → use weather tools
-- Email queries → use email_history tools
-
-CRITICAL DISTINCTION - DO NOT CONFUSE THESE:
-- "list tasks" or "tasks" → ALWAYS use task_manager tool (your TODO list)
-- "upcoming events" or "calendar" → use calendar tool (scheduled meetings/events)
-- task_manager is for TODO items, calendar is for scheduled events with dates/times
-
-IMPORTANT: Tool requests take precedence. Answer the tool request, then continue with dividend strategy if relevant.
-
-IMPORTANT: When using weather tools, the user MUST provide latitude and longitude coordinates.
-The weather service only works for US locations. If they ask for international weather (Toronto, London, etc.),
-politely explain that weather data is only available for US locations with coordinates.
-
 FORMATTING GUIDELINES:
-- Use **bold text** for important financial concepts, warnings, or key recommendations
-- Use clear, conversational language that investors can easily understand
-- Highlight important strategy points and action items with appropriate emphasis
-- Make financial calculations and recommendations stand out visually
-- Always include disclaimers that this is educational content, not financial advice
+- Use **bold text** for important questions, warnings, or key medical information
+- Use clear, conversational language that patients can easily understand
+- Highlight urgent situations with appropriate emphasis
+- Make important medical advice stand out visually
 """
         
         agent = Agent(model=model, system_prompt=system_prompt, tools=tools)
@@ -362,9 +335,6 @@ def load_mcp_config():
                 "enabled": server_config.get("enabled", True),
                 "description": server_config.get("description", f"{server_name.replace('_', ' ').title()} MCP server"),
                 "status": "ready" if server_config.get("enabled", True) else "disabled",
-                "transport": server_config.get("transport", "stdio"),  # CRITICAL: preserve transport type
-                "runtime_arn": server_config.get("runtime_arn", ""),  # CRITICAL: preserve AgentCore ARN
-                "region": server_config.get("region", "us-east-1"),   # CRITICAL: preserve region
                 "command": server_config.get("command", ""),
                 "args": server_config.get("args", []),
                 "env": server_config.get("env", {})
@@ -413,73 +383,49 @@ def estimate_tokens(text: str) -> int:
     return max(1, len(text) // 4)
 
 def setup_mcp_servers():
-    """Setup MCP servers using stdio or AgentCore transport"""
+    """Setup MCP servers using stdio transport"""
     global mcp_clients
-
-    add_server_log("system", f"Setting up {len(mcp_servers)} MCP servers", level="info")
-
+    
     for server_name, server_config in mcp_servers.items():
         if not server_config.get("enabled", True):
             add_server_log(server_name, "Server disabled, skipping")
             continue
-
+            
         try:
-            transport = server_config.get("transport", "stdio")
-
-            if transport == "agentcore":
-                # AgentCore Runtime transport
-                runtime_arn = server_config.get("runtime_arn")
-                region = server_config.get("region", "us-east-1")
-
-                if not runtime_arn:
-                    raise ValueError(f"runtime_arn required for agentcore transport")
-
-                # Create AgentCore MCP client wrapper
-                from agentcore_mcp_client import AgentCoreMCPClient
-                mcp_client = AgentCoreMCPClient(
-                    runtime_arn=runtime_arn,
-                    region=region,
-                    server_name=server_name
-                )
-
-                mcp_clients[server_name] = mcp_client
-                mcp_servers[server_name]["status"] = "ready"
-                logger.info(f"✅ {server_name} (AgentCore) ready")
-                add_server_log(server_name, f"AgentCore ready")
-
-            else:
-                # Stdio transport (local MCP server)
-                def find_python_command():
-                    import shutil
-                    if shutil.which("python"):
-                        return "python"
-                    elif shutil.which("python3"):
-                        return "python3"
-                    else:
-                        return "python"
-
-                default_python = find_python_command()
-                command = server_config.get("command", default_python)
-                args = server_config.get("args", [])
-
-                full_command = [command] + args
-                add_server_log(server_name, f"Setting up local MCP server: {' '.join(full_command)}")
-
-                # Create MCP Client for stdio transport
-                mcp_client = MCPClient(
-                    lambda cmd=command, arg=args: stdio_client(
-                        StdioServerParameters(
-                            command=cmd,
-                            args=arg,
-                            cwd=os.path.dirname(__file__)
-                        )
+            # Prepare command - find available python commandㅂ
+            def find_python_command():
+                import shutil
+                if shutil.which("python"):
+                    return "python"
+                elif shutil.which("python3"):
+                    return "python3"
+                else:
+                    return "python"  # fallback
+            
+            default_python = find_python_command()
+            command = server_config.get("command", default_python)
+            args = server_config.get("args", [])
+            
+            # Build full command
+            full_command = [command] + args
+            
+            add_server_log(server_name, f"Setting up MCP server: {' '.join(full_command)}")
+            
+            # Create MCP Client for stdio transport (similar to the example)
+            mcp_client = MCPClient(
+                lambda: stdio_client(
+                    StdioServerParameters(
+                        command=command,
+                        args=args,
+                        cwd=os.path.dirname(__file__)
                     )
                 )
-
-                mcp_clients[server_name] = mcp_client
-                mcp_servers[server_name]["status"] = "ready"
-                add_server_log(server_name, "Local MCP server ready")
-
+            )
+            
+            mcp_clients[server_name] = mcp_client
+            mcp_servers[server_name]["status"] = "ready"
+            add_server_log(server_name, "MCP server ready")
+                
         except Exception as e:
             add_server_log(server_name, f"Setup error: {str(e)}")
             mcp_servers[server_name]["status"] = "error"
@@ -504,24 +450,24 @@ def get_all_mcp_tools():
 # Available models with new Claude versions
 AVAILABLE_MODELS = [
     {
-        "id": "anthropic.claude-sonnet-4-5-20250929-v1:0",
-        "name": "Claude Sonnet 4.5",
+        "id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+        "name": "Claude Sonnet 4",
         "description": "Most advanced Claude model with superior reasoning"
     },
     {
-        "id": "anthropic.claude-opus-4-5-20251101-v1:0",
-        "name": "Claude Opus 4.5",
-        "description": "Most powerful Claude model with maximum intelligence"
-    },
-    {
-        "id": "us.amazon.nova-lite-v1:0",
-        "name": "Amazon Nova Lite",
-        "description": "Balanced performance and cost-effectiveness"
+        "id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+        "name": "Claude 3.7 Sonnet",
+        "description": "Claude model with enhanced reasoning capabilities"
     },
     {
         "id": "us.amazon.nova-pro-v1:0",
         "name": "Amazon Nova Pro",
         "description": "High-performance multimodal model"
+    },
+    {
+        "id": "us.amazon.nova-lite-v1:0",
+        "name": "Amazon Nova Lite",
+        "description": "Balanced performance and cost-effectiveness"
     }
 ]
 
@@ -614,15 +560,11 @@ load_mcp_config()
 def initialize_mcp_servers():
     """Initialize all MCP servers"""
     add_server_log("system", "Initializing MCP servers...")
-
+    
     # Setup MCP servers
     setup_mcp_servers()
-
-    logger.info(f"✅ MCP setup complete: {len(mcp_clients)} AgentCore clients loaded")
-    add_server_log("system", f"MCP initialization complete - {len(mcp_clients)} AgentCore clients")
-
-    # NOW refresh tools cache after AgentCore clients are set up
-    refresh_tools_cache()
+    
+    add_server_log("system", "MCP initialization complete")
 
 # FastAPI app setup
 app = FastAPI(title="AI Triage Agent API")
@@ -1195,7 +1137,7 @@ async def chat_endpoint(chat_message: ChatMessage, request: Request):
 async def get_decision_tree():
     """Get the decision tree structure for visualization"""
     try:
-        tree_file = os.path.join(os.path.dirname(__file__), 'data/dividend_strategy_tree.json')
+        tree_file = os.path.join(os.path.dirname(__file__), 'data/comprehensive_decision_tree.json')
         decision_tree = DecisionTree(tree_file)
         
         # Convert decision tree to JSON-serializable format
@@ -1344,7 +1286,7 @@ async def startup_event():
     
     # Initialize decision tree
     try:
-        tree_file = os.path.join(os.path.dirname(__file__), 'data/dividend_strategy_tree.json')
+        tree_file = os.path.join(os.path.dirname(__file__), 'data/comprehensive_decision_tree.json')
         decision_tree = DecisionTree(tree_file)
         add_server_log("system", f"Decision Tree initialized: {len(decision_tree.nodes)} nodes loaded", level="info")
     except Exception as e:
@@ -1356,71 +1298,6 @@ async def shutdown_event():
     """Cleanup MCP servers on shutdown"""
     add_server_log("system", "Shutting down MCP servers...")
     # Clean shutdown for stdio-based servers happens automatically
-    from database import close_db_pool
-    await close_db_pool()
-
-# ============================================================================
-# Task Management CRUD API (PostgreSQL via Aiven)
-# ============================================================================
-
-class TaskCreate(BaseModel):
-    description: str
-    priority: str = "medium"
-
-class TaskUpdate(BaseModel):
-    completed: bool
-
-@app.get("/api/tasks")
-async def get_tasks():
-    """Get all tasks"""
-    from database import get_all_tasks
-    try:
-        tasks = await get_all_tasks()
-        return {"tasks": tasks}
-    except Exception as e:
-        logger.error(f"Error getting tasks: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/tasks")
-async def create_task_endpoint(task: TaskCreate):
-    """Create a new task"""
-    from database import create_task
-    try:
-        new_task = await create_task(task.description, task.priority)
-        return {"task": new_task}
-    except Exception as e:
-        logger.error(f"Error creating task: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.patch("/api/tasks/{task_id}")
-async def update_task_endpoint(task_id: int, task: TaskUpdate):
-    """Update task completion status"""
-    from database import update_task_status
-    try:
-        updated_task = await update_task_status(task_id, task.completed)
-        if not updated_task:
-            raise HTTPException(status_code=404, detail="Task not found")
-        return {"task": updated_task}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error updating task: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.delete("/api/tasks/{task_id}")
-async def delete_task_endpoint(task_id: int):
-    """Delete a task"""
-    from database import delete_task
-    try:
-        deleted_task = await delete_task(task_id)
-        if not deleted_task:
-            raise HTTPException(status_code=404, detail="Task not found")
-        return {"task": deleted_task}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error deleting task: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
@@ -1435,5 +1312,4 @@ if __name__ == "__main__":
     print("🔧 MCP servers will initialize automatically (stdio transport)")
     print(f"🌍 AWS Region: {os.environ.get('AWS_REGION', 'us-east-1')}")
     
-    # uvicorn.run(app, host="0.0.0.0", port=8000)
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

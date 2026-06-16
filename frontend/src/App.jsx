@@ -16,9 +16,9 @@ qualified professionals in the respective fields.
 */
 
 import React, { useState, useEffect, useRef } from 'react';
-import ChatInterface from './components/ChatInterface';
-import LeftSidebar from './components/LeftSidebar';
-import RightSidebar from './components/RightSidebar';
+import ChatInterface from './components/ChatInterface.jsx';
+import LeftSidebar from './components/LeftSidebar.jsx';
+import RightSidebar from './components/RightSidebar.jsx';
 import './App.css';
 
 // Cookie utility functions

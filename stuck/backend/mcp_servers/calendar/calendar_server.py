@@ -238,5 +238,5 @@ def delete_event(event_id: int) -> str:
     return f"❌ Event with ID {event_id} not found."
 
 if __name__ == "__main__":
-    print("📅 Starting Calendar Integration MCP Server...")
+    # print("📅 Starting Calendar Integration MCP Server...")
     mcp.run(transport="stdio") 

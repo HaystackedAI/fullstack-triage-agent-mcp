@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import DecisionTreeVisualization from './DecisionTreeVisualization';
+import DecisionTreeVisualization from './DecisionTreeVisualization.jsx';
 import './LeftSidebar.css';
 
 const LeftSidebar = ({ selectedModel, setSelectedModel, sessionId, onClose }) => {

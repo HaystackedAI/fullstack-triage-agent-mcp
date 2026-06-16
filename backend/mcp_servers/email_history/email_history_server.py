@@ -40,5 +40,5 @@ def get_email_by_id(email_id: str) -> Dict:
     return {"error": f"Email with ID {email_id} not found"}
 
 if __name__ == "__main__":
-    # print("📧 Starting Email History MCP Server...")  # Commented: print interferes with stdio
+    print("📧 Starting Email History MCP Server...")
     mcp.run(transport="stdio")
