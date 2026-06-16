@@ -179,36 +179,33 @@ def refresh_tools_cache():
     """Refresh the global tools cache - includes BOTH stdio and AgentCore tools"""
     global cached_tools, tools_last_updated, mcp_clients
 
-    logger.info("=== REFRESH_TOOLS_CACHE CALLED ===")
-    logger.info(f"mcp_clients available: {list(mcp_clients.keys())}")
-
     try:
-        # Get stdio tools from mcp_manager
-        stdio_tools = mcp_manager.get_all_tools(active_only=True)
-        logger.info(f"Got {len(stdio_tools)} stdio tools from mcp_manager")
+        # Get stdio tools from mcp_manager (don't load at startup - only when agent runs)
+        # stdio tools require context manager which isn't available at startup
+        stdio_tools = []
+        stdio_count = len(mcp_manager.get_active_clients())
+        logger.info(f"Stdio tools ({stdio_count} servers) will be loaded when agent starts")
 
         # Get AgentCore tools from mcp_clients
         agentcore_tools = []
         for server_name, mcp_client in mcp_clients.items():
-            logger.info(f"Fetching tools from AgentCore server: {server_name}")
             try:
                 tools = mcp_client.list_tools_sync()
-                logger.info(f"Got {len(tools) if tools else 0} tools from {server_name}")
                 if tools:
                     agentcore_tools.extend(tools)
-                    add_server_log(server_name, f"Loaded {len(tools)} tools from AgentCore", level="info")
+                    add_server_log(server_name, f"Loaded {len(tools)} tools", level="info")
             except Exception as e:
                 logger.error(f"Error loading tools from {server_name}: {str(e)}")
-                add_server_log(server_name, f"Error loading AgentCore tools: {str(e)}", level="error")
+                add_server_log(server_name, f"Tool load error: {str(e)}", level="error")
 
-        # Combine both
-        cached_tools = stdio_tools + agentcore_tools
+        # Combine both (stdio tools loaded at runtime via mcp_manager context)
+        cached_tools = agentcore_tools  # Only cache AgentCore tools at startup
         tools_last_updated = datetime.now()
-        logger.info(f"✅ TOOLS CACHE REFRESHED: {len(stdio_tools)} stdio + {len(agentcore_tools)} AgentCore = {len(cached_tools)} total")
-        add_server_log("system", f"Tools cache refreshed: {len(stdio_tools)} stdio + {len(agentcore_tools)} AgentCore = {len(cached_tools)} total", level="info", details={"stdio": len(stdio_tools), "agentcore": len(agentcore_tools), "total": len(cached_tools)})
+        logger.info(f"✅ Tools loaded: {stdio_count} stdio (runtime) + {len(agentcore_tools)} AgentCore = {stdio_count + len(agentcore_tools)} total")
+        add_server_log("system", f"Tools: {stdio_count} stdio + {len(agentcore_tools)} AgentCore = {stdio_count + len(agentcore_tools)} total", level="info")
     except Exception as e:
-        logger.error(f"Error in refresh_tools_cache: {str(e)}")
-        add_server_log("system", f"Error refreshing tools cache: {str(e)}", level="error", details={"error": str(e)})
+        logger.error(f"Error refreshing tools cache: {str(e)}")
+        add_server_log("system", f"Tool cache error: {str(e)}", level="error")
         cached_tools = []
 
 def get_cached_tools():
@@ -224,8 +221,7 @@ def get_cached_tools():
 mcp_manager.initialize_default_clients()
 add_server_log("system", f"MCP Manager initialized with clients: {mcp_manager.get_active_clients()}", level="info", details={"active_clients": mcp_manager.get_active_clients()})
 
-# Pre-load tools cache
-refresh_tools_cache()
+# NOTE: Tools cache will be loaded in startup_event() after AgentCore clients are set up
 
 def get_or_create_session_agent(session_id: str, model_id: str) -> Agent:
     """Get or create a cached agent for the given session and model"""
@@ -366,6 +362,9 @@ def load_mcp_config():
                 "enabled": server_config.get("enabled", True),
                 "description": server_config.get("description", f"{server_name.replace('_', ' ').title()} MCP server"),
                 "status": "ready" if server_config.get("enabled", True) else "disabled",
+                "transport": server_config.get("transport", "stdio"),  # CRITICAL: preserve transport type
+                "runtime_arn": server_config.get("runtime_arn", ""),  # CRITICAL: preserve AgentCore ARN
+                "region": server_config.get("region", "us-east-1"),   # CRITICAL: preserve region
                 "command": server_config.get("command", ""),
                 "args": server_config.get("args", []),
                 "env": server_config.get("env", {})
@@ -417,33 +416,23 @@ def setup_mcp_servers():
     """Setup MCP servers using stdio or AgentCore transport"""
     global mcp_clients
 
-    logger.info(f"=== SETUP_MCP_SERVERS START: Found {len(mcp_servers)} servers in config ===")
-    add_server_log("system", f"Starting setup for {len(mcp_servers)} MCP servers", level="info")
+    add_server_log("system", f"Setting up {len(mcp_servers)} MCP servers", level="info")
 
     for server_name, server_config in mcp_servers.items():
-        logger.info(f"Processing server: {server_name}, config: {server_config}")
-
         if not server_config.get("enabled", True):
-            logger.info(f"Server {server_name} is DISABLED, skipping")
             add_server_log(server_name, "Server disabled, skipping")
             continue
 
         try:
             transport = server_config.get("transport", "stdio")
-            logger.info(f"Server {server_name} transport: {transport}")
 
             if transport == "agentcore":
                 # AgentCore Runtime transport
                 runtime_arn = server_config.get("runtime_arn")
                 region = server_config.get("region", "us-east-1")
 
-                logger.info(f"AgentCore server {server_name}: runtime_arn={runtime_arn}, region={region}")
-
                 if not runtime_arn:
                     raise ValueError(f"runtime_arn required for agentcore transport")
-
-                add_server_log(server_name, f"Setting up AgentCore MCP server: {runtime_arn}")
-                logger.info(f"Creating AgentCoreMCPClient for {server_name}")
 
                 # Create AgentCore MCP client wrapper
                 from agentcore_mcp_client import AgentCoreMCPClient
@@ -455,8 +444,8 @@ def setup_mcp_servers():
 
                 mcp_clients[server_name] = mcp_client
                 mcp_servers[server_name]["status"] = "ready"
-                logger.info(f"✅ AgentCore server {server_name} ready and added to mcp_clients")
-                add_server_log(server_name, f"AgentCore MCP server ready: {runtime_arn}")
+                logger.info(f"✅ {server_name} (AgentCore) ready")
+                add_server_log(server_name, f"AgentCore ready")
 
             else:
                 # Stdio transport (local MCP server)
@@ -624,15 +613,16 @@ load_mcp_config()
 
 def initialize_mcp_servers():
     """Initialize all MCP servers"""
-    logger.info("=== INITIALIZE_MCP_SERVERS CALLED ===")
     add_server_log("system", "Initializing MCP servers...")
 
     # Setup MCP servers
     setup_mcp_servers()
 
-    logger.info(f"=== SETUP COMPLETE: {len(mcp_clients)} clients in mcp_clients ===")
-    logger.info(f"mcp_clients keys: {list(mcp_clients.keys())}")
-    add_server_log("system", f"MCP initialization complete - {len(mcp_clients)} AgentCore clients loaded")
+    logger.info(f"✅ MCP setup complete: {len(mcp_clients)} AgentCore clients loaded")
+    add_server_log("system", f"MCP initialization complete - {len(mcp_clients)} AgentCore clients")
+
+    # NOW refresh tools cache after AgentCore clients are set up
+    refresh_tools_cache()
 
 # FastAPI app setup
 app = FastAPI(title="AI Triage Agent API")

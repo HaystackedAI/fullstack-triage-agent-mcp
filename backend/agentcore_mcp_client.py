@@ -33,16 +33,30 @@ class AgentCoreMCPClient:
             return self._tools_cache
 
         try:
-            # Call AgentCore runtime to list tools
+            # Call AgentCore runtime to list tools using MCP protocol
+            payload = json.dumps({
+                "jsonrpc": "2.0",
+                "method": "tools/list",
+                "id": 1
+            })
+
             response = self.client.invoke_agent_runtime(
-                runtimeId=self.runtime_arn,
-                sessionId="tool-list-session",
-                inputText="list-tools"
+                agentRuntimeArn=self.runtime_arn,
+                payload=payload,
+                contentType='application/json',
+                mcpProtocolVersion='2024-11-05'
             )
 
-            # Parse response
-            result = json.loads(response.get('response', '{}'))
-            tools = result.get('tools', [])
+            # Parse streaming response
+            result_text = ""
+            if 'completion' in response:
+                for event in response['completion']:
+                    if 'chunk' in event:
+                        chunk_data = event['chunk'].get('bytes', b'')
+                        result_text += chunk_data.decode('utf-8')
+
+            result = json.loads(result_text) if result_text else {}
+            tools = result.get('result', {}).get('tools', [])
 
             # MCP standard format - should work directly with Strands
             # Both use: {name, description, inputSchema}
@@ -62,16 +76,34 @@ class AgentCoreMCPClient:
         Compatible with Strands MCPClient.call_tool_sync()
         """
         try:
-            # Call AgentCore runtime to execute tool
+            # Call AgentCore runtime to execute tool using MCP protocol
+            payload = json.dumps({
+                "jsonrpc": "2.0",
+                "method": "tools/call",
+                "params": {
+                    "name": tool_name,
+                    "arguments": arguments
+                },
+                "id": 2
+            })
+
             response = self.client.invoke_agent_runtime(
-                runtimeId=self.runtime_arn,
-                sessionId="tool-call-session",
-                inputText=f"call-tool --tool {tool_name} --input '{json.dumps(arguments)}'"
+                agentRuntimeArn=self.runtime_arn,
+                payload=payload,
+                contentType='application/json',
+                mcpProtocolVersion='2024-11-05'
             )
 
-            # Parse response
-            result = json.loads(response.get('response', '{}'))
-            return result.get('content', [])
+            # Parse streaming response
+            result_text = ""
+            if 'completion' in response:
+                for event in response['completion']:
+                    if 'chunk' in event:
+                        chunk_data = event['chunk'].get('bytes', b'')
+                        result_text += chunk_data.decode('utf-8')
+
+            result = json.loads(result_text) if result_text else {}
+            return result.get('result', {}).get('content', [])
 
         except ClientError as e:
             error_msg = f"AgentCore tool call error: {e}"
