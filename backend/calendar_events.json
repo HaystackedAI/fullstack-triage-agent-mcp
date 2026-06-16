@@ -1,10 +1,10 @@
 [
   {
-    "id": 1,
-    "title": "Team Meeting",
-    "start_datetime": "2026-06-20T10:00:00",
-    "end_datetime": "2026-06-20T11:30:00",
+    "id": 2,
+    "title": "Follow-up on Weather Inquiry",
+    "start_datetime": "2023-10-03T10:00:00",
+    "end_datetime": "2023-10-03T10:30:00",
     "description": "",
-    "created_at": "2026-06-15T17:04:17.275979"
+    "created_at": "2026-06-15T21:59:49.270214"
   }
 ]
