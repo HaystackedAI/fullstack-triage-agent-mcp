@@ -503,16 +503,16 @@ def get_all_mcp_tools():
 
 # Available models with new Claude versions
 AVAILABLE_MODELS = [
-    # {
-    #     "id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
-    #     "name": "Claude Sonnet 4",
-    #     "description": "Most advanced Claude model with superior reasoning"
-    # },
-    # {
-    #     "id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-    #     "name": "Claude 3.7 Sonnet",
-    #     "description": "Claude model with enhanced reasoning capabilities"
-    # },
+    {
+        "id": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "name": "Claude Sonnet 4.5",
+        "description": "Most advanced Claude model with superior reasoning"
+    },
+    {
+        "id": "anthropic.claude-opus-4-5-20251101-v1:0",
+        "name": "Claude Opus 4.5",
+        "description": "Most powerful Claude model with maximum intelligence"
+    },
     {
         "id": "us.amazon.nova-lite-v1:0",
         "name": "Amazon Nova Lite",
@@ -1435,4 +1435,5 @@ if __name__ == "__main__":
     print("🔧 MCP servers will initialize automatically (stdio transport)")
     print(f"🌍 AWS Region: {os.environ.get('AWS_REGION', 'us-east-1')}")
     
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
