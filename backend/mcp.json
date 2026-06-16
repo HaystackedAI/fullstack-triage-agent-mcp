@@ -7,7 +7,7 @@
             "enabled": true
         },
         "weather": {
-            "command": "agentcore",
+            "transport": "agentcore",
             "runtime_arn": "arn:aws:bedrock-agentcore:us-east-1:822206589627:runtime/mcp2_Weather-a7ZoanFkS0",
             "region": "us-east-1",
             "enabled": true
